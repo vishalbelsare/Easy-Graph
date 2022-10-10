@@ -1,9 +1,10 @@
-from .HIS import *
-from .MaxD import *
 from .AP_Greedy import *
-from .HAM import *
-
 from .evaluation import *
-from .metrics import *
+from .HAM import *
+from .HIS import *
 from .ICC import *
+from .MaxD import *
+from .metrics import *
 from .NOBE import *
+from .strong_connected_component import *
+from .weakTie import *

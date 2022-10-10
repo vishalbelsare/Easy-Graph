@@ -1,10 +1,11 @@
-import easygraph
 from easygraph.utils.decorators import *
-from threading import Thread
+
 
 __all__ = [
-    "is_connected", "number_connected_components", "connected_components",
-    "connected_component_of_node"
+    "is_connected",
+    "number_connected_components",
+    "connected_components",
+    "connected_component_of_node",
 ]
 
 
@@ -98,7 +99,7 @@ def connected_component_of_node(G, node):
     ----------
     G : easygraph.Graph
 
-    node : object
+    node : Hashable
         The target node
 
     Returns
@@ -109,9 +110,9 @@ def connected_component_of_node(G, node):
     Examples
     --------
     Returns the connected component of one node `Jack`.
-    
+
     >>> connected_component_of_node(G, node='Jack')
-    
+
     """
     return set(_plain_bfs(G, node))
 

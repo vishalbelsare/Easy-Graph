@@ -1,6 +1,9 @@
-import easygraph as eg
 from itertools import chain
+
+import easygraph as eg
+
 from easygraph.utils import *
+
 
 __all__ = [
     "set_edge_attributes",
@@ -9,7 +12,12 @@ __all__ = [
     "selfloop_edges",
     "topological_sort",
     "number_of_selfloops",
+    "density",
 ]
+try:
+    from cpp_easygraph import cpp_density
+except ImportError:
+    pass
 
 
 def set_edge_attributes(G, values, name=None):
@@ -150,7 +158,7 @@ def add_path(G_to_add_to, nodes_for_path, **attr):
     except StopIteration:
         return
     G_to_add_to.add_node(first_node)
-    G_to_add_to.add_edges_from(pairwise(chain((first_node, ), nlist)), **attr)
+    G_to_add_to.add_edges_from(pairwise(chain((first_node,), nlist)), **attr)
 
 
 def set_node_attributes(G, values, name=None):
@@ -255,8 +263,7 @@ def set_node_attributes(G, values, name=None):
 
 def topological_generations(G):
     if not G.is_directed():
-        raise AssertionError(
-            "Topological sort not defined on undirected graphs.")
+        raise AssertionError("Topological sort not defined on undirected graphs.")
     indegree_map = {v: d for v, d in G.in_degree() if d > 0}
     zero_indegree = [v for v, d in G.in_degree() if d == 0]
     while zero_indegree:
@@ -269,16 +276,14 @@ def topological_generations(G):
                 try:
                     indegree_map[child] -= 1
                 except KeyError as err:
-                    raise RuntimeError(
-                        "Graph changed during iteration") from err
+                    raise RuntimeError("Graph changed during iteration") from err
                 if indegree_map[child] == 0:
                     zero_indegree.append(child)
                     del indegree_map[child]
         yield this_generation
 
     if indegree_map:
-        raise AssertionError(
-            "Graph contains a cycle or graph changed during iteration")
+        raise AssertionError("Graph contains a cycle or graph changed during iteration")
 
 
 def topological_sort(G):
@@ -356,36 +361,92 @@ def selfloop_edges(G, data=False, keys=False, default=None):
     if data is True:
         if G.is_multigraph():
             if keys is True:
-                return ((n, n, k, d) for n, nbrs in G.adj.items() if n in nbrs
-                        for k, d in nbrs[n].items())
+                return (
+                    (n, n, k, d)
+                    for n, nbrs in G.adj.items()
+                    if n in nbrs
+                    for k, d in nbrs[n].items()
+                )
             else:
-                return ((n, n, d) for n, nbrs in G.adj.items() if n in nbrs
-                        for d in nbrs[n].values())
+                return (
+                    (n, n, d)
+                    for n, nbrs in G.adj.items()
+                    if n in nbrs
+                    for d in nbrs[n].values()
+                )
         else:
             return ((n, n, nbrs[n]) for n, nbrs in G.adj.items() if n in nbrs)
     elif data is not False:
         if G.is_multigraph():
             if keys is True:
-                return ((n, n, k, d.get(data, default))
-                        for n, nbrs in G.adj.items() if n in nbrs
-                        for k, d in nbrs[n].items())
+                return (
+                    (n, n, k, d.get(data, default))
+                    for n, nbrs in G.adj.items()
+                    if n in nbrs
+                    for k, d in nbrs[n].items()
+                )
             else:
-                return ((n, n, d.get(data, default))
-                        for n, nbrs in G.adj.items() if n in nbrs
-                        for d in nbrs[n].values())
+                return (
+                    (n, n, d.get(data, default))
+                    for n, nbrs in G.adj.items()
+                    if n in nbrs
+                    for d in nbrs[n].values()
+                )
         else:
-            return ((n, n, nbrs[n].get(data, default))
-                    for n, nbrs in G.adj.items() if n in nbrs)
+            return (
+                (n, n, nbrs[n].get(data, default))
+                for n, nbrs in G.adj.items()
+                if n in nbrs
+            )
     else:
         if G.is_multigraph():
             if keys is True:
-                return ((n, n, k) for n, nbrs in G.adj.items() if n in nbrs
-                        for k in nbrs[n])
+                return (
+                    (n, n, k) for n, nbrs in G.adj.items() if n in nbrs for k in nbrs[n]
+                )
             else:
                 return (
                     (n, n)
-                    for n, nbrs in G.adj.items() if n in nbrs for i in range(
-                        len(nbrs[n]))  # for easy edge removal (#4068)
+                    for n, nbrs in G.adj.items()
+                    if n in nbrs
+                    for i in range(len(nbrs[n]))  # for easy edge removal (#4068)
                 )
         else:
             return ((n, n) for n, nbrs in G.adj.items() if n in nbrs)
+
+
+def density(G):
+    r"""Returns the density of a graph.
+
+    The density for undirected graphs is
+
+    .. math::
+
+       d = \frac{2m}{n(n-1)},
+
+    and for directed graphs is
+
+    .. math::
+
+       d = \frac{m}{n(n-1)},
+
+    where `n` is the number of nodes and `m`  is the number of edges in `G`.
+
+    Notes
+    -----
+    The density is 0 for a graph without edges and 1 for a complete graph.
+    The density of multigraphs can be higher than 1.
+
+    Self loops are counted in the total number of edges so graphs with self
+    loops can have density higher than 1.
+    """
+    if G.cflag == 1:
+        return cpp_density(G)
+    n = G.number_of_nodes()
+    m = G.number_of_edges()
+    if m == 0 or n <= 1:
+        return 0
+    d = m / (n * (n - 1))
+    if not G.is_directed():
+        d *= 2
+    return d

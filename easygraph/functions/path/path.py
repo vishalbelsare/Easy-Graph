@@ -1,5 +1,6 @@
 from easygraph.utils.decorators import *
 
+
 __all__ = [
     "Dijkstra",
     "Floyd",
@@ -10,16 +11,24 @@ __all__ = [
     "multi_source_dijkstra",
 ]
 
+try:
+    from cpp_easygraph import cpp_dijkstra_multisource
+    from cpp_easygraph import cpp_Floyd
+    from cpp_easygraph import cpp_Kruskal
+    from cpp_easygraph import cpp_Prim
+except ImportError:
+    pass
+
 
 @not_implemented_for("multigraph")
 def Dijkstra(G, node):
     """Returns the length of paths from the certain node to remaining nodes
 
     Parameters
-    ---------- 
+    ----------
     G : graph
         weighted graph
-    node : int
+    node : Hashable
 
     Returns
     -------
@@ -42,10 +51,10 @@ def Floyd(G):
     """Returns the length of paths from all nodes to remaining nodes
 
     Parameters
-    ---------- 
+    ----------
     G : graph
         weighted graph
-    
+
     Returns
     -------
     result_dict : dict
@@ -58,6 +67,8 @@ def Floyd(G):
     >>> Floyd(G)
 
     """
+    if G.cflag == 1:
+        return cpp_Floyd(G)
     adj = G.adj.copy()
     result_dict = {}
     for i in G:
@@ -86,10 +97,10 @@ def Prim(G):
     """Returns the edges that make up the minimum spanning tree
 
     Parameters
-    ---------- 
+    ----------
     G : graph
         weighted graph
-    
+
     Returns
     -------
     result_dict : dict
@@ -102,6 +113,8 @@ def Prim(G):
     >>> Prim(G)
 
     """
+    if G.cflag == 1:
+        return cpp_Prim(G)
     adj = G.adj.copy()
     result_dict = {}
     for i in G:
@@ -119,8 +132,7 @@ def Prim(G):
         min_weight = float("inf")
         for i in selected:
             for j in candidate:
-                if i in G and j in G[i] and adj[i][j].get("weight",
-                                                          1) < min_weight:
+                if i in G and j in G[i] and adj[i][j].get("weight", 1) < min_weight:
                     start = i
                     end = j
                     min_weight = adj[i][j].get("weight", 1)
@@ -139,10 +151,10 @@ def Kruskal(G):
     """Returns the edges that make up the minimum spanning tree
 
     Parameters
-    ---------- 
+    ----------
     G : graph
         weighted graph
-    
+
     Returns
     -------
     result_dict : dict
@@ -155,6 +167,8 @@ def Kruskal(G):
     >>> Kruskal(G)
 
     """
+    if G.cflag == 1:
+        return cpp_Kruskal(G)
     adj = G.adj.copy()
     result_dict = {}
     edge_list = []
@@ -215,13 +229,18 @@ def multi_source_dijkstra(G, sources, weight="weight", target=None):
 
 
 def _dijkstra_multisource(G, sources, weight="weight", target=None):
-    from heapq import heappush, heappop
+    if G.cflag == 1:
+        return cpp_dijkstra_multisource(G, sources, weight, target)
+    from heapq import heappop
+    from heapq import heappush
+
     push = heappush
     pop = heappop
     adj = G.adj
     dist = {}
     seen = {}
     from itertools import count
+
     c = count()
     Q = []
     for source in sources:
@@ -239,8 +258,7 @@ def _dijkstra_multisource(G, sources, weight="weight", target=None):
             vu_dist = dist[v] + cost
             if u in dist:
                 if vu_dist < dist[u]:
-                    raise ValueError('Contradictory paths found:',
-                                     'negative weights?')
+                    raise ValueError("Contradictory paths found:", "negative weights?")
             elif u not in seen or vu_dist < seen[u]:
                 seen[u] = vu_dist
                 push(Q, (vu_dist, next(c), u))
